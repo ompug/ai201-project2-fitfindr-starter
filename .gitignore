@@ -1,5 +1,6 @@
 # API keys — never commit these
 .env
+.fitfindr_profile.json
 
 # Python
 __pycache__/

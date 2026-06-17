@@ -43,8 +43,52 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
            string and return it along with session["outfit_suggestion"] and
            session["fit_card"].
     """
-    # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
+    if not user_query or not user_query.strip():
+        return "Tell FitFindr what you want to search for first.", "", ""
+
+    wardrobe = (
+        get_empty_wardrobe()
+        if wardrobe_choice == "Empty wardrobe (new user)"
+        else get_example_wardrobe()
+    )
+    session = run_agent(user_query.strip(), wardrobe)
+
+    if session["error"]:
+        retry_note = session.get("retry_note") or ""
+        return "\n\n".join(part for part in [retry_note, session["error"]] if part), "", ""
+
+    item = session["selected_item"]
+    price = session.get("price_assessment") or {}
+    trend = session.get("trend_signal") or {}
+    memory_note = session.get("memory_note")
+    retry_note = session.get("retry_note")
+
+    listing_lines = [
+        f"{item['title']}",
+        f"${item['price']:.2f} on {item['platform']} - {item['condition']} condition",
+        f"Size: {item['size']}",
+        f"Brand: {item.get('brand') or 'unbranded'}",
+        f"Tags: {', '.join(item.get('style_tags', []))}",
+        f"Colors: {', '.join(item.get('colors', []))}",
+    ]
+    if retry_note:
+        listing_lines.append(f"\nFallback: {retry_note}")
+    if memory_note:
+        listing_lines.append(f"\nMemory: {memory_note}")
+    if price:
+        listing_lines.append(
+            "\nPrice check: "
+            f"{price['assessment']} (${price['item_price']:.2f} vs "
+            f"${price['average_comparable_price']:.2f} average across "
+            f"{price['comparable_count']} comparable listings). "
+            f"{price['reasoning']}"
+        )
+    if trend:
+        listing_lines.append(
+            f"\nTrend signal: {trend['trend']}. {trend['styling_note']}\nSource: {trend['source']}"
+        )
+
+    return "\n".join(listing_lines), session["outfit_suggestion"], session["fit_card"]
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
